@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thesis Examiner Report Analyzer & Revision Verifier</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Mammoth.js for Docx Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- docx.js for Word DOCX Generation -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .drop-active { border-color: #4f46e5 !important; background-color: #f0fdf4 !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Navigation / Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-100 flex items-center justify-center">
+                        <i data-lucide="file-search-2" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-900 leading-tight">Thesis Audit AI</h1>
+                        <p class="text-xs text-slate-500 font-medium">Examiner Report vs. Revised Document Verifier</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button id="demo-btn" onclick="loadDemoData()" class="px-3.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-all flex items-center space-x-1.5 shadow-xs">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Load Sample Demo</span>
+                    </button>
+                    <div class="h-4 w-px bg-slate-200 hidden sm:block"></div>
+                    <button onclick="toggleSettingsModal()" class="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Settings & API Config">
+                        <i data-lucide="settings" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col space-y-6">
+
+        <!-- Progress Tracker Step Bar -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+            <div class="grid grid-cols-3 gap-2 text-center relative">
+                <div id="step-indicator-1" class="flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-indigo-50 text-indigo-700 font-semibold text-xs sm:text-sm border border-indigo-200">
+                    <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs">1</span>
+                    <span class="hidden sm:inline">Upload Documents</span>
+                    <span class="sm:hidden">Upload</span>
+                </div>
+                <div id="step-indicator-2" class="flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-500 font-medium text-xs sm:text-sm border border-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs">2</span>
+                    <span class="hidden sm:inline">AI Analysis</span>
+                    <span class="sm:hidden">Analyze</span>
+                </div>
+                <div id="step-indicator-3" class="flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-500 font-medium text-xs sm:text-sm border border-slate-200">
+                    <span class="w-5 h-5 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-xs">3</span>
+                    <span class="hidden sm:inline">Compliance Matrix & Report</span>
+                    <span class="sm:hidden">Report</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 1: DOCUMENT INPUT AREA -->
+        <div id="input-section" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- File 1: Examiner Report -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="p-2 bg-amber-50 text-amber-600 rounded-lg">
+                            <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-900">1. Examiner / Reviewer Report</h2>
+                            <p class="text-xs text-slate-500">Comments, critiques, or required revisions (.docx, .txt)</p>
+                        </div>
+                    </div>
+                    <span id="report-status-badge" class="px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">Not Loaded</span>
+                </div>
+
+                <!-- Dropzone -->
+                <div id="report-dropzone" class="border-2 border-dashed border-slate-300 hover:border-indigo-400 bg-slate-50/50 rounded-xl p-6 transition-all text-center flex flex-col items-center justify-center cursor-pointer min-h-[160px]" onclick="document.getElementById('report-file-input').click()">
+                    <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mb-2"></i>
+                    <p class="text-xs font-semibold text-slate-700">Click or drag & drop Examiner Report here</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Supports DOCX and TXT files</p>
+                    <input type="file" id="report-file-input" accept=".docx,.txt" class="hidden" onchange="handleFileSelect(event, 'report')">
+                </div>
+
+                <!-- Manual Paste Fallback Accordion -->
+                <details class="group text-xs border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                    <summary class="p-2.5 font-medium text-slate-600 hover:text-slate-900 cursor-pointer flex items-center justify-between select-none">
+                        <span>Or manually paste Examiner Report text...</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
+                    </summary>
+                    <div class="p-3 bg-white border-t border-slate-200">
+                        <textarea id="report-text-input" rows="8" placeholder="Paste examiner feedback points, committee remarks, or bullet points..." class="w-full p-2.5 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none custom-scrollbar" oninput="updateTextFromInput('report')"></textarea>
+                    </div>
+                </details>
+            </div>
+
+            <!-- File 2: Revised Thesis / Chapter -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <i data-lucide="file-text" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-900">2. Revised Thesis / Chapter File</h2>
+                            <p class="text-xs text-slate-500">Corrected document text (.docx, .txt)</p>
+                        </div>
+                    </div>
+                    <span id="thesis-status-badge" class="px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">Not Loaded</span>
+                </div>
+
+                <!-- Dropzone -->
+                <div id="thesis-dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-slate-50/50 rounded-xl p-6 transition-all text-center flex flex-col items-center justify-center cursor-pointer min-h-[160px]" onclick="document.getElementById('thesis-file-input').click()">
+                    <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mb-2"></i>
+                    <p class="text-xs font-semibold text-slate-700">Click or drag & drop Revised Thesis here</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Supports DOCX and TXT files</p>
+                    <input type="file" id="thesis-file-input" accept=".docx,.txt" class="hidden" onchange="handleFileSelect(event, 'thesis')">
+                </div>
+
+                <!-- Manual Paste Fallback Accordion -->
+                <details class="group text-xs border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                    <summary class="p-2.5 font-medium text-slate-600 hover:text-slate-900 cursor-pointer flex items-center justify-between select-none">
+                        <span>Or manually paste Revised Thesis text...</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
+                    </summary>
+                    <div class="p-3 bg-white border-t border-slate-200">
+                        <textarea id="thesis-text-input" rows="8" placeholder="Paste full revised chapter text or manuscript sections..." class="w-full p-2.5 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none custom-scrollbar" oninput="updateTextFromInput('thesis')"></textarea>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Action Controls Banner -->
+            <div class="lg:col-span-2 bg-gradient-to-r from-indigo-900 via-slate-900 to-slate-800 rounded-xl p-6 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="space-y-1 text-center sm:text-left">
+                    <h3 class="text-base font-bold flex items-center justify-center sm:justify-start space-x-2">
+                        <span>Ready to Analyze Documents</span>
+                    </h3>
+                    <p class="text-xs text-slate-300">Gemini AI will extract all examiner requirements, verify changes in your document, and score your compliance.</p>
+                </div>
+                <button id="analyze-btn" onclick="startAnalysis()" disabled class="w-full sm:w-auto px-6 py-3 bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-lg shadow-sm transition-all flex items-center justify-center space-x-2 whitespace-nowrap">
+                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                    <span>Run Verification Audit</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- SECTION 2: AI PROCESSING LOADER (Hidden by default) -->
+        <div id="loading-section" class="hidden bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs flex flex-col items-center justify-center space-y-6">
+            <div class="relative flex items-center justify-center">
+                <div class="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                <i data-lucide="sparkles" class="w-8 h-8 text-indigo-600 absolute"></i>
+            </div>
+            <div class="max-w-md space-y-2">
+                <h3 id="loader-title" class="text-lg font-bold text-slate-900">Extracting Examiner Comments...</h3>
+                <p id="loader-subtitle" class="text-xs text-slate-500">Processing document structures and cross-referencing text context...</p>
+            </div>
+            <div class="w-full max-w-xs bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div id="loader-bar" class="bg-indigo-600 h-full w-1/4 transition-all duration-500"></div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: RESULTS DASHBOARD (Hidden by default) -->
+        <div id="results-section" class="hidden space-y-6">
+            
+            <!-- Key Metrics Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <span class="text-xs font-semibold text-slate-500">Overall Compliance</span>
+                    <div class="flex items-baseline space-x-2 mt-2">
+                        <span id="score-percentage" class="text-3xl font-extrabold text-slate-900">0%</span>
+                        <span id="score-status" class="text-xs font-bold text-emerald-600">Pending</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+                        <div id="score-bar" class="bg-indigo-600 h-full w-0 transition-all duration-1000"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-500">Fully Addressed</span>
+                        <span class="p-1.5 bg-emerald-50 text-emerald-600 rounded-md"><i data-lucide="check-circle-2" class="w-4 h-4"></i></span>
+                    </div>
+                    <span id="count-addressed" class="text-2xl font-bold text-emerald-700 mt-2">0</span>
+                    <p class="text-[11px] text-slate-400 mt-1">Verified with direct text evidence</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-500">Partially Addressed</span>
+                        <span class="p-1.5 bg-amber-50 text-amber-600 rounded-md"><i data-lucide="alert-triangle" class="w-4 h-4"></i></span>
+                    </div>
+                    <span id="count-partial" class="text-2xl font-bold text-amber-700 mt-2">0</span>
+                    <p class="text-[11px] text-slate-400 mt-1">Requires minor additions or refinement</p>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-500">Unaddressed / Missing</span>
+                        <span class="p-1.5 bg-rose-50 text-rose-600 rounded-md"><i data-lucide="x-circle" class="w-4 h-4"></i></span>
+                    </div>
+                    <span id="count-unaddressed" class="text-2xl font-bold text-rose-700 mt-2">0</span>
+                    <p class="text-[11px] text-slate-400 mt-1">No matching changes found</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Navigation Tabs -->
+            <div class="bg-white border border-slate-200 rounded-xl p-1.5 shadow-xs flex flex-wrap gap-1">
+                <button onclick="switchTab('matrix')" id="tab-btn-matrix" class="flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-xs">
+                    <i data-lucide="list-checks" class="w-4 h-4"></i>
+                    <span>Compliance Verification Matrix</span>
+                </button>
+                <button onclick="switchTab('rebuttal')" id="tab-btn-rebuttal" class="flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    <span>Response to Examiner Table</span>
+                </button>
+                <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    <span>Category Breakdown</span>
+                </button>
+                <button onclick="switchTab('chat')" id="tab-btn-chat" class="flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100">
+                    <i data-lucide="bot" class="w-4 h-4"></i>
+                    <span>AI Revision Assistant</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: COMPLIANCE MATRIX -->
+            <div id="tab-content-matrix" class="space-y-4">
+                <!-- Controls & Filters -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div class="relative w-full sm:w-72">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        <input type="text" id="matrix-search" placeholder="Search comments or keywords..." oninput="renderMatrix()" class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <select id="matrix-status-filter" onchange="renderMatrix()" class="px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none">
+                            <option value="ALL">All Statuses</option>
+                            <option value="FULL">Fully Addressed Only</option>
+                            <option value="PARTIAL">Partially Addressed Only</option>
+                            <option value="NOT_ADDRESSED">Unaddressed Only</option>
+                        </select>
+                        <button onclick="exportAuditReportDocx()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-colors flex items-center space-x-1.5 whitespace-nowrap shadow-xs">
+                            <i data-lucide="file-type-2" class="w-3.5 h-3.5"></i>
+                            <span>Export DOCX Report</span>
+                        </button>
+                        <button onclick="exportAuditReport()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors flex items-center space-x-1.5 whitespace-nowrap border border-slate-200" title="Export as plain text file">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                            <span>TXT</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Matrix List Container -->
+                <div id="matrix-cards-container" class="space-y-4">
+                    <!-- Cards rendered via JS -->
+                </div>
+            </div>
+
+            <!-- TAB 2: RESPONSE TO EXAMINER TABLE -->
+            <div id="tab-content-rebuttal" class="hidden space-y-4">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Official "Response to Examiner / Reviewer" Table</h3>
+                        <p class="text-xs text-slate-500">Includes Section/Line references and Compliance Status for university submission.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="exportAuditReportDocx()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 shadow-xs">
+                            <i data-lucide="file-type-2" class="w-3.5 h-3.5"></i>
+                            <span>Export Table to DOCX</span>
+                        </button>
+                        <button onclick="copyRebuttalTable()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                            <span>Copy Table Markdown</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-xs">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider">
+                                <th class="p-3.5 w-12 text-center">Ref</th>
+                                <th class="p-3.5 w-1/4">Examiner Comment / Critique</th>
+                                <th class="p-3.5 w-1/3">Author's Response & Revisions Made</th>
+                                <th class="p-3.5 w-1/6">Location & Line Ref</th>
+                                <th class="p-3.5 w-1/6 text-center">Compliance Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rebuttal-table-body" class="divide-y divide-slate-200">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: CATEGORY ANALYTICS -->
+            <div id="tab-content-analytics" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900">Status Distribution</h3>
+                    <div class="relative flex items-center justify-center h-64">
+                        <canvas id="status-chart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-xs flex flex-col space-y-4">
+                    <h3 class="text-sm font-bold text-slate-900">Issues by Thesis Category</h3>
+                    <div class="relative flex items-center justify-center h-64">
+                        <canvas id="category-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: AI REVISION ASSISTANT CHAT -->
+            <div id="tab-content-chat" class="hidden bg-white border border-slate-200 rounded-xl shadow-xs flex flex-col h-[520px]">
+                <div class="p-4 border-b border-slate-200 bg-slate-50 rounded-t-xl flex items-center space-x-2">
+                    <div class="p-1.5 bg-indigo-600 text-white rounded-md">
+                        <i data-lucide="bot" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-900">Interactive Revision Assistant</h3>
+                        <p class="text-[11px] text-slate-500">Ask specific questions about examiner comments or missing text context</p>
+                    </div>
+                </div>
+
+                <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar text-xs">
+                    <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-lg text-indigo-900">
+                        Hello! I have analyzed both your examiner report and revised document. Ask me how to fix unaddressed comments, draft text paragraphs, or verify specific chapter sections and line numbers.
+                    </div>
+                </div>
+
+                <div class="p-3 border-t border-slate-200 bg-slate-50 rounded-b-xl flex items-center space-x-2">
+                    <input type="text" id="chat-input" placeholder="e.g. How can I rewrite Chapter 3 to address comment #2?" onkeypress="if(event.key==='Enter') sendChatMessage()" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <button onclick="sendChatMessage()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-colors flex items-center space-x-1">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        <span>Send</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                    <i data-lucide="settings" class="w-4 h-4 text-indigo-600"></i>
+                    <span>Settings & API Configuration</span>
+                </h3>
+                <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Gemini API Key (Optional Override)</label>
+                    <input type="password" id="api-key-input" placeholder="Leave empty to use default system key" class="w-full p-2.5 border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <p class="text-[11px] text-slate-400 mt-1">Leave empty if running inside standard environment; otherwise enter your custom API key.</p>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">AI Model Target</label>
+                    <input type="text" value="gemini-3-flash-preview" disabled class="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-lg font-mono text-xs text-slate-500">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="toggleSettingsModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-xs hover:bg-indigo-500">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <script>
+        // Global Application State
+        const state = {
+            reportText: '',
+            thesisText: '',
+            reportFileName: '',
+            thesisFileName: '',
+            analysisData: null,
+            activeTab: 'matrix',
+            statusChart: null,
+            categoryChart: null
+        };
+
+        // Initialize Lucide Icons on DOM Load
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            setupDragAndDrop();
+        });
+
+        // Modal toggle
+        function toggleSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-rose-600' : (type === 'success' ? 'bg-emerald-600' : 'bg-slate-800');
+            toast.className = `${bgClass} text-white px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg transition-all duration-300 pointer-events-auto flex items-center space-x-2`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Setup Drag & Drop Handlers
+        function setupDragAndDrop() {
+            ['report-dropzone', 'thesis-dropzone'].forEach(id => {
+                const zone = document.getElementById(id);
+                const type = id.startsWith('report') ? 'report' : 'thesis';
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    zone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.add('drop-active');
+                    }, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    zone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.remove('drop-active');
+                    }, false);
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    if (files.length > 0) {
+                        processFile(files[0], type);
+                    }
+                }, false);
+            });
+        }
+
+        // Handle File Select Event
+        function handleFileSelect(event, type) {
+            const file = event.target.files[0];
+            if (file) {
+                processFile(file, type);
+            }
+        }
+
+        // Process File (Docx using Mammoth, Text directly)
+        async function processFile(file, type) {
+            const isDocx = file.name.endsWith('.docx');
+            const isTxt = file.name.endsWith('.txt');
+
+            if (!isDocx && !isTxt) {
+                showToast('Please upload a .docx or .txt file.', 'error');
+                return;
+            }
+
+            try {
+                let extractedText = '';
+                if (isDocx) {
+                    showToast(`Extracting text from ${file.name}...`, 'info');
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    extractedText = result.value;
+                } else {
+                    extractedText = await file.text();
+                }
+
+                if (type === 'report') {
+                    state.reportText = extractedText;
+                    state.reportFileName = file.name;
+                    document.getElementById('report-text-input').value = extractedText;
+                    document.getElementById('report-status-badge').className = 'px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full';
+                    document.getElementById('report-status-badge').innerText = `Loaded (${file.name})`;
+                } else {
+                    state.thesisText = extractedText;
+                    state.thesisFileName = file.name;
+                    document.getElementById('thesis-text-input').value = extractedText;
+                    document.getElementById('thesis-status-badge').className = 'px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full';
+                    document.getElementById('thesis-status-badge').innerText = `Loaded (${file.name})`;
+                }
+
+                checkCanAnalyze();
+                showToast(`Successfully processed ${file.name}`, 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Error reading file. Please check file formatting.', 'error');
+            }
+        }
+
+        // Manual Text Area Sync
+        function updateTextFromInput(type) {
+            if (type === 'report') {
+                state.reportText = document.getElementById('report-text-input').value;
+                document.getElementById('report-status-badge').innerText = state.reportText.trim() ? 'Text Pasted' : 'Not Loaded';
+                document.getElementById('report-status-badge').className = state.reportText.trim() ? 'px-2.5 py-1 text-xs font-semibold bg-indigo-100 text-indigo-800 rounded-full' : 'px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full';
+            } else {
+                state.thesisText = document.getElementById('thesis-text-input').value;
+                document.getElementById('thesis-status-badge').innerText = state.thesisText.trim() ? 'Text Pasted' : 'Not Loaded';
+                document.getElementById('thesis-status-badge').className = state.thesisText.trim() ? 'px-2.5 py-1 text-xs font-semibold bg-indigo-100 text-indigo-800 rounded-full' : 'px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full';
+            }
+            checkCanAnalyze();
+        }
+
+        function checkCanAnalyze() {
+            const btn = document.getElementById('analyze-btn');
+            btn.disabled = !(state.reportText.trim() && state.thesisText.trim());
+        }
+
+        // Load Pre-populated Sample Data for Demo/Testing
+        function loadDemoData() {
+            const sampleReport = `EXAMINER REPORT - THESIS EVALUATION
+Candidate: Alex Vance
+Thesis Title: Optimization of Machine Learning Pipelines for Edge IoT Devices
+
+Examiner Major Revisions Required:
+1. Chapter 2 (Literature Review): The candidate fails to adequately cite seminal works on quantized neural networks from 2023-2024 (specifically Zhang et al. and Patel's benchmark study).
+2. Chapter 3 (Methodology): The sample size of 50 test runs on the Raspberry Pi 4 is insufficient for statistical confidence. Please expand testing to at least 200 trials and provide p-value estimations.
+3. Chapter 3 (Formatting): Figure 3.4 is missing axis labels for memory latency (ms) and throughput.
+4. Chapter 4 (Results): Section 4.2 claims a 35% speedup in inference time, but the underlying table only demonstrates a 18% improvement. Reconcile this discrepancy.
+5. Chapter 5 (Conclusion): The threat to construct validity is omitted in the limitations section. Please add a dedicated sub-paragraph addressing network bandwidth latency constraints.`;
+
+            const sampleThesis = `CHAPTER 2: LITERATURE REVIEW
+[Line 10] Recent breakthroughs in deep learning deployment for constrained hardware rely heavily on Model Quantization.
+[Line 12] As demonstrated by Zhang et al. (2023), post-training 8-bit integer quantization reduces model size by 75% without significant accuracy degradation.
+[Line 15] Furthermore, Patel's (2024) comprehensive benchmark study confirmed that 4-bit INT quantization achieves optimal throughput on ARM Cortex microcontrollers.
+
+CHAPTER 3: METHODOLOGY AND EXPERIMENTAL SETUP
+[Line 45] Section 3.2: Experimental Setup and Sample Size
+[Line 48] To ensure statistical rigor, the empirical evaluation was expanded to 250 benchmark trials on the Raspberry Pi 4 Model B (4GB RAM).
+[Line 52] Hypotheses were tested using a two-tailed paired t-test yielding a p-value of p < 0.001, confirming statistical significance across all test runs.
+[Line 60] Figure 3.4 depicts the memory latency (measured in milliseconds, ms) alongside system throughput (frames per second, FPS).
+
+CHAPTER 4: EXPERIMENTAL RESULTS
+[Line 110] Section 4.2: Inference Acceleration Analysis
+[Line 114] In Section 4.2, early single-core tests showed an 18% latency reduction; however, under multi-threaded execution with AVX optimization, full hardware acceleration yielded an average inference speedup of 35.2% over baseline ONNX Runtime. Table 4.1 has been updated to reflect multi-threaded vs single-threaded performance tiers.
+
+CHAPTER 5: CONCLUSION & DISCUSSION
+[Line 180] Section 5.3: Limitations & Threats to Validity
+[Line 183] Construct validity in real-world deployments is primarily affected by network bandwidth jitter. When sensor nodes transmit raw feature tensors over high-latency cellular connections, edge processing gains may be offset by transmission delays.`;
+
+            document.getElementById('report-text-input').value = sampleReport;
+            document.getElementById('thesis-text-input').value = sampleThesis;
+            updateTextFromInput('report');
+            updateTextFromInput('thesis');
+            showToast('Loaded demo Examiner Report and Revised Thesis sample!', 'success');
+        }
+
+        // AI Analysis Call using Gemini API
+        async function startAnalysis() {
+            if (!state.reportText.trim() || !state.thesisText.trim()) {
+                showToast('Please provide both the Examiner Report and Revised Thesis.', 'error');
+                return;
+            }
+
+            // UI Switching to Loading
+            document.getElementById('input-section').classList.add('hidden');
+            document.getElementById('results-section').classList.add('hidden');
+            document.getElementById('loading-section').classList.remove('hidden');
+
+            // Update Progress Indicators
+            updateStepIndicator(2);
+            setLoadingProgress('Analyzing Examiner Comments...', '25%');
+
+            const customApiKey = document.getElementById('api-key-input').value.trim();
+            const apiKey = customApiKey || "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const systemPrompt = `You are an expert Academic Thesis Examiner & Quality Assurance Auditor.
+Your job is to thoroughly analyze an "Examiner Report" against a "Revised Thesis / Chapter Text".
+You must extract every distinct requirement, comment, critique, or correction requested by the examiner, and determine whether and how it was addressed in the revised thesis text.
+
+For each examiner comment, evaluate:
+1. "FULL" if the revision directly and completely addresses the examiner's comment with verified text evidence.
+2. "PARTIAL" if the revision addresses part of the critique but leaves minor gaps or unaddressed details.
+3. "NOT_ADDRESSED" if there is no evidence in the revised thesis that this critique was addressed.
+
+IMPORTANT LOCATION/SECTION FORMAT REQUIREMENT:
+Under "locationReference", you MUST include both the exact Section/Chapter Number AND Line Number / Range (e.g. "Section 3.2, Line 48-52" or "Chapter 2, Line 12-15"). If line numbers are not explicitly printed, estimate the paragraph/line range based on text structure.
+
+Output MUST be strictly valid JSON matching the following schema:
+{
+  "overallComplianceScore": number (0 to 100),
+  "summaryOverview": "String summary of overall compliance and key remaining gaps",
+  "items": [
+    {
+      "id": "C1",
+      "category": "Literature Review | Methodology | Results | Formatting | Discussion | General",
+      "examinerComment": "Exact or concise summary of what the examiner asked for",
+      "status": "FULL" | "PARTIAL" | "NOT_ADDRESSED",
+      "evidenceQuote": "Direct quote or detailed summary of where/how this was fixed in the revised thesis (or 'None found')",
+      "locationReference": "Section Number & Line Number Range (e.g., 'Section 3.2, Line 48-52')",
+      "missingDetails": "Explanation of what is still missing if PARTIAL or NOT_ADDRESSED, or 'None'",
+      "draftResponse": "A polite, professional response statement ready for the Response to Reviewers table"
+    }
+  ]
+}`;
+
+            const userPrompt = `
+=== EXAMINER REPORT ===
+${state.reportText}
+
+=== REVISED THESIS / CHAPTER TEXT ===
+${state.thesisText}
+`;
+
+            const payload = {
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+
+            try {
+                setTimeout(() => setLoadingProgress('Cross-referencing text changes...', '60%'), 1200);
+                setTimeout(() => setLoadingProgress('Calculating overall compliance score...', '85%'), 2500);
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (!jsonText) {
+                    throw new Error("Invalid response format received from Gemini AI.");
+                }
+
+                state.analysisData = JSON.parse(jsonText);
+
+                // Transition to Dashboard
+                document.getElementById('loading-section').classList.add('hidden');
+                document.getElementById('results-section').classList.remove('hidden');
+                updateStepIndicator(3);
+
+                renderDashboard();
+                showToast('Audit complete! Compliance report generated.', 'success');
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading-section').classList.add('hidden');
+                document.getElementById('input-section').classList.remove('hidden');
+                updateStepIndicator(1);
+                showToast('Analysis failed: ' + err.message, 'error');
+            }
+        }
+
+        function setLoadingProgress(title, percentage) {
+            document.getElementById('loader-title').innerText = title;
+            document.getElementById('loader-bar').style.width = percentage;
+        }
+
+        function updateStepIndicator(step) {
+            for (let i = 1; i <= 3; i++) {
+                const el = document.getElementById(`step-indicator-${i}`);
+                if (i === step) {
+                    el.className = "flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-indigo-600 text-white font-bold text-xs sm:text-sm shadow-sm";
+                } else if (i < step) {
+                    el.className = "flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-emerald-50 text-emerald-700 font-semibold text-xs sm:text-sm border border-emerald-200";
+                } else {
+                    el.className = "flex items-center justify-center space-x-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-500 font-medium text-xs sm:text-sm border border-slate-200";
+                }
+            }
+        }
+
+        // Dashboard Rendering Logic
+        function renderDashboard() {
+            const data = state.analysisData;
+            if (!data) return;
+
+            // Score & Counts
+            const score = data.overallComplianceScore || 0;
+            document.getElementById('score-percentage').innerText = `${score}%`;
+            document.getElementById('score-bar').style.width = `${score}%`;
+            
+            const scoreStatusEl = document.getElementById('score-status');
+            if (score >= 85) {
+                scoreStatusEl.innerText = 'Excellent';
+                scoreStatusEl.className = 'text-xs font-bold text-emerald-600';
+            } else if (score >= 60) {
+                scoreStatusEl.innerText = 'Requires Minor Edits';
+                scoreStatusEl.className = 'text-xs font-bold text-amber-600';
+            } else {
+                scoreStatusEl.innerText = 'Major Gaps Remain';
+                scoreStatusEl.className = 'text-xs font-bold text-rose-600';
+            }
+
+            const items = data.items || [];
+            const addressed = items.filter(i => i.status === 'FULL').length;
+            const partial = items.filter(i => i.status === 'PARTIAL').length;
+            const unaddressed = items.filter(i => i.status === 'NOT_ADDRESSED').length;
+
+            document.getElementById('count-addressed').innerText = addressed;
+            document.getElementById('count-partial').innerText = partial;
+            document.getElementById('count-unaddressed').innerText = unaddressed;
+
+            renderMatrix();
+            renderRebuttalTable();
+            renderCharts();
+        }
+
+        // Tab Switcher Functionality
+        function switchTab(tabName) {
+            state.activeTab = tabName;
+            const tabs = ['matrix', 'rebuttal', 'analytics', 'chat'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const content = document.getElementById(`tab-content-${t}`);
+                if (btn && content) {
+                    if (t === tabName) {
+                        btn.className = "flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-xs";
+                        content.classList.remove('hidden');
+                    } else {
+                        btn.className = "flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100";
+                        content.classList.add('hidden');
+                    }
+                }
+            });
+
+            if (tabName === 'analytics') {
+                renderCharts();
+            }
+        }
+
+        // Render Response to Examiner Table
+        function renderRebuttalTable() {
+            const tbody = document.getElementById('rebuttal-table-body');
+            if (!tbody || !state.analysisData || !state.analysisData.items) return;
+
+            tbody.innerHTML = state.analysisData.items.map((item, idx) => {
+                let badgeClass = '';
+                let statusLabel = '';
+                
+                if (item.status === 'FULL') {
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    statusLabel = 'Fully Addressed';
+                } else if (item.status === 'PARTIAL') {
+                    badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                    statusLabel = 'Partially Addressed';
+                } else {
+                    badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                    statusLabel = 'Unaddressed';
+                }
+
+                return `
+                    <tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-slate-100/60 transition-colors">
+                        <td class="p-3.5 text-center font-mono font-bold text-slate-700 align-top">${item.id}</td>
+                        <td class="p-3.5 text-slate-800 leading-relaxed align-top">
+                            <div class="font-semibold text-slate-900 mb-1">${escapeHtml(item.category)}</div>
+                            <div>${escapeHtml(item.examinerComment)}</div>
+                        </td>
+                        <td class="p-3.5 text-slate-800 leading-relaxed align-top">
+                            <p class="font-medium text-indigo-950 mb-1.5">${escapeHtml(item.draftResponse || 'Response drafted.')}</p>
+                            ${item.evidenceQuote && item.evidenceQuote !== 'None found' ? `
+                                <div class="p-2 bg-indigo-50/60 border border-indigo-100 rounded text-[11px] text-indigo-900 italic">
+                                    "${escapeHtml(item.evidenceQuote)}"
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="p-3.5 text-slate-700 font-mono text-[11px] align-top">
+                            <span class="inline-block px-2.5 py-1 bg-slate-100 border border-slate-200 rounded font-semibold text-slate-700 leading-tight">
+                                ${escapeHtml(item.locationReference || 'Section / Line N/A')}
+                            </span>
+                        </td>
+                        <td class="p-3.5 text-center align-top">
+                            <span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass} shadow-2xs">
+                                ${statusLabel}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Render Chart.js Analytics
+        function renderCharts() {
+            if (!state.analysisData || !state.analysisData.items) return;
+
+            const items = state.analysisData.items;
+
+            // Status distribution chart
+            const statusCtx = document.getElementById('status-chart')?.getContext('2d');
+            if (statusCtx) {
+                if (state.statusChart) state.statusChart.destroy();
+                
+                const fullCount = items.filter(i => i.status === 'FULL').length;
+                const partialCount = items.filter(i => i.status === 'PARTIAL').length;
+                const unaddressedCount = items.filter(i => i.status === 'NOT_ADDRESSED').length;
+
+                state.statusChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Fully Addressed', 'Partially Addressed', 'Unaddressed'],
+                        datasets: [{
+                            data: [fullCount, partialCount, unaddressedCount],
+                            backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { size: 11, family: 'Inter' } } }
+                        }
+                    }
+                });
+            }
+
+            // Category breakdown chart
+            const catCtx = document.getElementById('category-chart')?.getContext('2d');
+            if (catCtx) {
+                if (state.categoryChart) state.categoryChart.destroy();
+
+                const categoryCounts = {};
+                items.forEach(i => {
+                    const cat = i.category || 'General';
+                    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                });
+
+                state.categoryChart = new Chart(catCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(categoryCounts),
+                        datasets: [{
+                            label: 'Number of Comments',
+                            data: Object.values(categoryCounts),
+                            backgroundColor: '#6366f1',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } },
+                            x: { ticks: { font: { size: 11 } } }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Copy Rebuttal Table as Markdown
+        function copyRebuttalTable() {
+            if (!state.analysisData || !state.analysisData.items) return;
+
+            let md = "| Ref | Examiner Comment | Author's Response | Location & Line Ref | Compliance Status |\n";
+            md += "| --- | --- | --- | --- | --- |\n";
+
+            state.analysisData.items.forEach(item => {
+                const comment = (item.examinerComment || '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                const response = (item.draftResponse || '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                const location = (item.locationReference || 'N/A').replace(/\|/g, '\\|');
+                const status = item.status === 'FULL' ? 'Fully Addressed' : (item.status === 'PARTIAL' ? 'Partially Addressed' : 'Unaddressed');
+                md += `| ${item.id} | ${comment} | ${response} | ${location} | ${status} |\n`;
+            });
+
+            // Copy to clipboard fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = md;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast('Markdown table copied to clipboard!', 'success');
+            } catch (err) {
+                showToast('Failed to copy markdown table.', 'error');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // Interactive AI Chat Assistant
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatMessages = document.getElementById('chat-messages');
+
+            // Append User Message
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = "bg-slate-100 text-slate-800 p-3 rounded-lg max-w-[85%] ml-auto text-xs font-medium border border-slate-200";
+            userMsgDiv.innerText = message;
+            chatMessages.appendChild(userMsgDiv);
+
+            input.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = "bg-indigo-50 border border-indigo-100 p-3 rounded-lg max-w-[85%] text-indigo-900 text-xs italic flex items-center space-x-2";
+            loadingDiv.innerHTML = `<span class="inline-block w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span> <span>AI Assistant thinking...</span>`;
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const customApiKey = document.getElementById('api-key-input').value.trim();
+            const apiKey = customApiKey || "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const systemPrompt = `You are a helpful Academic Thesis & Chapter Revision Assistant. 
+You have context on the thesis audit results:
+Overall Score: ${state.analysisData?.overallComplianceScore || 0}%
+Audit Summary: ${state.analysisData?.summaryOverview || ''}
+Comments & Findings: ${JSON.stringify(state.analysisData?.items || [])}
+
+Answer the candidate's question concisely, providing practical academic guidance, text draft suggestions, or explanations.`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: message }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+
+                const result = await response.json();
+                const aiReply = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process that question right now.";
+
+                loadingDiv.remove();
+
+                const aiMsgDiv = document.createElement('div');
+                aiMsgDiv.className = "bg-indigo-50 border border-indigo-100 p-3 rounded-lg max-w-[85%] text-indigo-950 text-xs leading-relaxed";
+                aiMsgDiv.innerText = aiReply;
+                chatMessages.appendChild(aiMsgDiv);
+
+            } catch (err) {
+                loadingDiv.remove();
+                const errDiv = document.createElement('div');
+                errDiv.className = "bg-rose-50 border border-rose-100 p-3 rounded-lg max-w-[85%] text-rose-800 text-xs";
+                errDiv.innerText = "Error connecting to AI assistant. Please try again.";
+                chatMessages.appendChild(errDiv);
+            }
+
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Render Matrix Cards
+        function renderMatrix() {
+            const container = document.getElementById('matrix-cards-container');
+            const search = document.getElementById('matrix-search').value.toLowerCase();
+            const filter = document.getElementById('matrix-status-filter').value;
+
+            if (!state.analysisData || !state.analysisData.items) return;
+
+            let filtered = state.analysisData.items.filter(item => {
+                const matchesSearch = item.examinerComment.toLowerCase().includes(search) || 
+                                      item.evidenceQuote.toLowerCase().includes(search) ||
+                                      item.category.toLowerCase().includes(search);
+                const matchesFilter = filter === 'ALL' || item.status === filter;
+                return matchesSearch && matchesFilter;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-8 rounded-xl border border-slate-200 text-center text-slate-500 text-xs">
+                        No comments found matching your filters.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => {
+                let badgeClass = '';
+                let statusLabel = '';
+                let iconName = '';
+
+                if (item.status === 'FULL') {
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    statusLabel = 'Fully Addressed';
+                    iconName = 'check-circle-2';
+                } else if (item.status === 'PARTIAL') {
+                    badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                    statusLabel = 'Partially Addressed';
+                    iconName = 'alert-triangle';
+                } else {
+                    badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                    statusLabel = 'Unaddressed';
+                    iconName = 'x-circle';
+                }
+
+                return `
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4 transition-all hover:border-slate-300">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2.5 py-0.5 rounded-md font-mono text-xs font-bold bg-slate-100 text-slate-700">${item.id}</span>
+                                <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700">${item.category}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-3 py-1 rounded-full text-xs font-bold border flex items-center space-x-1.5 ${badgeClass}">
+                                    <i data-lucide="${iconName}" class="w-3.5 h-3.5"></i>
+                                    <span>${statusLabel}</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <!-- Left: Examiner Request -->
+                            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-100 space-y-1.5">
+                                <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Examiner Critique / Comment</span>
+                                <p class="text-slate-800 font-medium leading-relaxed">${escapeHtml(item.examinerComment)}</p>
+                            </div>
+
+                            <!-- Right: Evidence in Thesis -->
+                            <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-100 space-y-1.5">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Evidence in Revised Thesis</span>
+                                    <span class="text-[10px] font-semibold text-slate-500 font-mono">${escapeHtml(item.locationReference || 'N/A')}</span>
+                                </div>
+                                <p class="text-slate-800 leading-relaxed italic">${item.evidenceQuote !== 'None found' ? `"${escapeHtml(item.evidenceQuote)}"` : '<span class="text-rose-600 font-semibold not-italic">No matching text evidence located in revised thesis.</span>'}</p>
+                            </div>
+                        </div>
+
+                        ${item.missingDetails && item.missingDetails !== 'None' ? `
+                            <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start space-x-2">
+                                <i data-lucide="info" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+                                <div>
+                                    <span class="font-bold">Missing or Actionable Gap:</span>
+                                    <span>${escapeHtml(item.missingDetails)}</span>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // Export Full Audit Summary in Plain Text
+        function exportAuditReport() {
+            if (!state.analysisData) return;
+
+            const content = `THESIS EXAMINER REVISION COMPLIANCE AUDIT
+Generated by Thesis Audit AI
+Date: ${new Date().toLocaleDateString()}
+
+Overall Compliance Score: ${state.analysisData.overallComplianceScore}%
+Summary: ${state.analysisData.summaryOverview}
+
+----------------------------------------------------
+DETAILED AUDIT MATRIX:
+----------------------------------------------------
+${state.analysisData.items.map(i => `
+Ref ID: ${i.id}
+Category: ${i.category}
+Compliance Status: ${i.status === 'FULL' ? 'Fully Addressed' : (i.status === 'PARTIAL' ? 'Partially Addressed' : 'Unaddressed')}
+Examiner Comment: ${i.examinerComment}
+Evidence Found: ${i.evidenceQuote}
+Location & Line Ref: ${i.locationReference || 'N/A'}
+Actionable Gaps: ${i.missingDetails || 'None'}
+Proposed Response: ${i.draftResponse}
+----------------------------------------------------`).join('\n')}
+`;
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            saveBlob(blob, `Thesis_Compliance_Audit_${new Date().toISOString().slice(0,10)}.txt`);
+            showToast('Audit plain text report downloaded!', 'success');
+        }
+
+        // Native DOCX Generation Function
+        async function exportAuditReportDocx() {
+            if (!state.analysisData) {
+                showToast('No analysis data available to export.', 'error');
+                return;
+            }
+
+            showToast('Generating Word (.docx) document...', 'info');
+
+            // Try rendering via docx.js library if available
+            if (typeof docx !== 'undefined') {
+                try {
+                    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType } = docx;
+                    const data = state.analysisData;
+
+                    const doc = new Document({
+                        sections: [{
+                            properties: {},
+                            children: [
+                                new Paragraph({
+                                    text: "Thesis Examiner Revision Compliance Audit",
+                                    heading: HeadingLevel.HEADING_1,
+                                    spacing: { after: 120 }
+                                }),
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: "Generated by Thesis Audit AI  |  Date: ", italic: true, color: "666666" }),
+                                        new TextRun({ text: new Date().toLocaleDateString(), italic: true, bold: true, color: "666666" })
+                                    ],
+                                    spacing: { after: 240 }
+                                }),
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: "Overall Compliance Score: ", bold: true, size: 26 }),
+                                        new TextRun({ 
+                                            text: `${data.overallComplianceScore}%`, 
+                                            bold: true, 
+                                            size: 28, 
+                                            color: data.overallComplianceScore >= 85 ? "10B981" : (data.overallComplianceScore >= 60 ? "D97706" : "DC2626") 
+                                        })
+                                    ],
+                                    spacing: { after: 160 }
+                                }),
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: "Executive Summary Overview:\n", bold: true }),
+                                        new TextRun({ text: data.summaryOverview || "" })
+                                    ],
+                                    spacing: { after: 360 }
+                                }),
+                                new Paragraph({
+                                    text: "Compliance Verification Matrix & Reviewer Responses",
+                                    heading: HeadingLevel.HEADING_2,
+                                    spacing: { after: 180 }
+                                }),
+                                new Table({
+                                    width: { size: 100, type: WidthType.PERCENTAGE },
+                                    rows: [
+                                        new TableRow({
+                                            tableHeader: true,
+                                            children: [
+                                                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Ref", bold: true, color: "FFFFFF" })] })], shading: { fill: "4F46E5" }, width: { size: 8, type: WidthType.PERCENTAGE } }),
+                                                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Examiner Critique", bold: true, color: "FFFFFF" })] })], shading: { fill: "4F46E5" }, width: { size: 30, type: WidthType.PERCENTAGE } }),
+                                                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Evidence & Author Response", bold: true, color: "FFFFFF" })] })], shading: { fill: "4F46E5" }, width: { size: 32, type: WidthType.PERCENTAGE } }),
+                                                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Location / Line Ref", bold: true, color: "FFFFFF" })] })], shading: { fill: "4F46E5" }, width: { size: 15, type: WidthType.PERCENTAGE } }),
+                                                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Compliance Status", bold: true, color: "FFFFFF" })] })], shading: { fill: "4F46E5" }, width: { size: 15, type: WidthType.PERCENTAGE } })
+                                            ]
+                                        }),
+                                        ...data.items.map(item => new TableRow({
+                                            children: [
+                                                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: item.id, bold: true })], alignment: AlignmentType.CENTER })] }),
+                                                new TableCell({ children: [
+                                                    new Paragraph({ children: [new TextRun({ text: item.category, bold: true, color: "4F46E5" })] }),
+                                                    new Paragraph({ text: item.examinerComment })
+                                                ] }),
+                                                new TableCell({ children: [
+                                                    new Paragraph({ children: [new TextRun({ text: "Response: ", bold: true }), new TextRun({ text: item.draftResponse })] }),
+                                                    new Paragraph({ children: [new TextRun({ text: "Evidence: ", bold: true }), new TextRun({ text: `"${item.evidenceQuote}"`, italic: true })] }),
+                                                    ...(item.missingDetails && item.missingDetails !== 'None' ? [new Paragraph({ children: [new TextRun({ text: "Action Gap: ", bold: true, color: "D97706" }), new TextRun({ text: item.missingDetails, color: "D97706" })] })] : [])
+                                                ] }),
+                                                new TableCell({ children: [new Paragraph({ text: item.locationReference || "N/A" })] }),
+                                                new TableCell({ children: [
+                                                    new Paragraph({ children: [new TextRun({ text: item.status === 'FULL' ? 'Fully Addressed' : (item.status === 'PARTIAL' ? 'Partially Addressed' : 'Unaddressed'), bold: true, color: item.status === 'FULL' ? "10B981" : (item.status === 'PARTIAL' ? "D97706" : "DC2626") })], alignment: AlignmentType.CENTER })
+                                                ] })
+                                            ]
+                                        }))
+                                    ]
+                                })
+                            ]
+                        }]
+                    });
+
+                    const blob = await Packer.toBlob(doc);
+                    saveBlob(blob, `Thesis_Compliance_Audit_${new Date().toISOString().slice(0,10)}.docx`);
+                    showToast('DOCX report exported successfully!', 'success');
+                    return;
+                } catch (err) {
+                    console.warn("docx.js compilation error, falling back to Word HTML blob:", err);
+                }
+            }
+
+            // Fallback: Generate Word-compatible HTML DOCX Blob
+            generateHtmlDocxBlob();
+        }
+
+        // Fallback Formatted HTML-DOCX generator
+        function generateHtmlDocxBlob() {
+            const data = state.analysisData;
+            const content = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                <meta charset='utf-8'>
+                <title>Thesis Compliance Audit Report</title>
+                <style>
+                    body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; line-height: 1.5; color: #1e293b; padding: 20px; }
+                    h1 { color: #1e1b4b; font-size: 20pt; margin-bottom: 4px; }
+                    h2 { color: #4338ca; font-size: 14pt; margin-top: 18pt; margin-bottom: 8pt; border-bottom: 2px solid #e0e7ff; padding-bottom: 4px; }
+                    .meta { color: #64748b; font-size: 10pt; margin-bottom: 16pt; }
+                    .score-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12pt; border-radius: 6px; margin-bottom: 16pt; }
+                    .score-value { font-size: 22pt; font-weight: bold; color: #4f46e5; }
+                    table { border-collapse: collapse; width: 100%; margin-top: 10pt; font-size: 10pt; }
+                    th { background-color: #4f46e5; color: #ffffff; padding: 8pt; border: 1px solid #3730a3; text-align: left; }
+                    td { padding: 8pt; border: 1px solid #cbd5e1; vertical-align: top; }
+                    tr:nth-child(even) { background-color: #f8fafc; }
+                    .status-FULL { color: #059669; font-weight: bold; }
+                    .status-PARTIAL { color: #d97706; font-weight: bold; }
+                    .status-NOT_ADDRESSED { color: #dc2626; font-weight: bold; }
+                    .quote { font-style: italic; color: #334155; }
+                </style>
+                </head>
+                <body>
+                    <h1>Thesis Examiner Revision Compliance Audit</h1>
+                    <div class="meta">Generated by Thesis Audit AI &bull; Date: ${new Date().toLocaleDateString()}</div>
+                    
+                    <div class="score-box">
+                        <div style="font-size: 11pt; font-weight: bold; color: #475569;">OVERALL COMPLIANCE SCORE</div>
+                        <div class="score-value">${data.overallComplianceScore}%</div>
+                        <p><strong>Summary Overview:</strong> ${escapeHtml(data.summaryOverview)}</p>
+                    </div>
+
+                    <h2>Compliance Verification Matrix & Reviewer Responses</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 6%;">Ref</th>
+                                <th style="width: 28%;">Examiner Critique</th>
+                                <th style="width: 36%;">Revision Evidence & Author Response</th>
+                                <th style="width: 15%;">Location & Line Ref</th>
+                                <th style="width: 15%;">Compliance Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.items.map(item => `
+                                <tr>
+                                    <td style="text-align: center; font-weight: bold;">${item.id}</td>
+                                    <td>
+                                        <div><strong style="color: #4f46e5;">${escapeHtml(item.category)}</strong></div>
+                                        <div>${escapeHtml(item.examinerComment)}</div>
+                                    </td>
+                                    <td>
+                                        <div><strong>Author Response:</strong> ${escapeHtml(item.draftResponse)}</div>
+                                        <div style="margin-top: 4px;"><strong>Evidence:</strong> <span class="quote">"${escapeHtml(item.evidenceQuote)}"</span></div>
+                                        ${item.missingDetails && item.missingDetails !== 'None' ? `<div style="margin-top: 4px; color: #b45309;"><strong>Gap:</strong> ${escapeHtml(item.missingDetails)}</div>` : ''}
+                                    </td>
+                                    <td><strong>${escapeHtml(item.locationReference || 'N/A')}</strong></td>
+                                    <td style="text-align: center;" class="status-${item.status}">
+                                        ${item.status === 'FULL' ? 'Fully Addressed' : (item.status === 'PARTIAL' ? 'Partially Addressed' : 'Unaddressed')}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', content], {
+                type: 'application/vnd.ms-word'
+            });
+            saveBlob(blob, `Thesis_Compliance_Audit_${new Date().toISOString().slice(0,10)}.docx`);
+            showToast('DOCX report exported successfully!', 'success');
+        }
+
+        function saveBlob(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Helper string escape
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
